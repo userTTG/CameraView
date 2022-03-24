@@ -7,6 +7,8 @@ import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Surface;
 
 import androidx.annotation.NonNull;
@@ -47,6 +49,8 @@ public class OverlayDrawer {
     private Issue514Workaround mIssue514Workaround;
     private final Object mIssue514WorkaroundLock = new Object();
 
+    Handler mHandler = new Handler(Looper.getMainLooper());
+
     public OverlayDrawer(@NonNull Overlay overlay, @NonNull Size size) {
         mOverlay = overlay;
         mTextureDrawer = new GlTextureDrawer();
@@ -63,19 +67,21 @@ public class OverlayDrawer {
      * @param target the target
      */
     public void draw(@NonNull Overlay.Target target) {
-        try {
-            final Canvas surfaceCanvas;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && mOverlay.getHardwareCanvasEnabled()) {
-                surfaceCanvas = mSurface.lockHardwareCanvas();
-            } else {
-                surfaceCanvas = mSurface.lockCanvas(null);
+        mHandler.post(()->{
+            try {
+                final Canvas surfaceCanvas;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && mOverlay.getHardwareCanvasEnabled()) {
+                    surfaceCanvas = mSurface.lockHardwareCanvas();
+                } else {
+                    surfaceCanvas = mSurface.lockCanvas(null);
+                }
+                surfaceCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                mOverlay.drawOn(target, surfaceCanvas);
+                mSurface.unlockCanvasAndPost(surfaceCanvas);
+            } catch (Surface.OutOfResourcesException e) {
+                LOG.w("Got Surface.OutOfResourcesException while drawing video overlays", e);
             }
-            surfaceCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-            mOverlay.drawOn(target, surfaceCanvas);
-            mSurface.unlockCanvasAndPost(surfaceCanvas);
-        } catch (Surface.OutOfResourcesException e) {
-            LOG.w("Got Surface.OutOfResourcesException while drawing video overlays", e);
-        }
+        });
         synchronized (mIssue514WorkaroundLock) {
             mIssue514Workaround.beforeOverlayUpdateTexImage();
             mSurfaceTexture.updateTexImage();
