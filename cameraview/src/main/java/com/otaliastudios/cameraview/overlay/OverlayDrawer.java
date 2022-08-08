@@ -78,10 +78,8 @@ public class OverlayDrawer {
                 surfaceCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
                 mOverlay.drawOn(target, surfaceCanvas);
                 mSurface.unlockCanvasAndPost(surfaceCanvas);
-            } catch (Surface.OutOfResourcesException e) {
-                LOG.w("Got Surface.OutOfResourcesException while drawing video overlays", e);
-            } catch (NullPointerException e){
-                LOG.w("Got NullPointerException while drawing video overlays", e);
+            } catch (Exception e) {
+                LOG.w("Got Exception while drawing video overlays", e);
             }
         });
         synchronized (mIssue514WorkaroundLock) {
